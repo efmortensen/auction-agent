@@ -8,7 +8,7 @@ export default {
   // ---------------------------------------------------------------
   //  WHERE YOU ARE
   // ---------------------------------------------------------------
-  homeZip: "77002",          // <-- CHANGE to your zip code
+  homeZip: "77520",          // <-- CHANGE to your zip code
   homeState: "TX",           // two-letter state for GovDeals / Public Surplus
   maxPickupMiles: 50,        // straight-line miles; ~50 mi is about a 1-hour drive
 
