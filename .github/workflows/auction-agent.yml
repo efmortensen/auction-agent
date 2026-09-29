@@ -1,0 +1,50 @@
+name: Auction agent
+
+on:
+  schedule:
+    - cron: "30 23 * * *"
+  workflow_dispatch:
+    inputs:
+      force_gov:
+        description: "Also check GovDeals + Public Surplus today (1 = yes)"
+        default: "0"
+      dry_run:
+        description: "Don't email, just build the preview (1 = yes)"
+        default: "0"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install --omit=dev --no-audit --no-fund
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: agent-cache-${{ github.run_id }}
+          restore-keys: agent-cache-
+
+      - run: node src/index.js
+        env:
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          FORCE_GOV: ${{ github.event.inputs.force_gov || '0' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          DEBUG: "1"
+
+      - if: ${{ github.event.inputs.dry_run == '1' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: preview.html
