@@ -31,7 +31,7 @@ jobs:
           key: agent-cache-${{ github.run_id }}
           restore-keys: agent-cache-
 
-      - run: node src/index.js
+      - run: node index.js
         env:
           EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
           EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
