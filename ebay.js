@@ -1,4 +1,4 @@
-import { fetchJson, toNum } from "../util.js";
+import { fetchJson, toNum } from "./util.js";
 
 const API = "https://api.ebay.com";
 let tokenCache = null;

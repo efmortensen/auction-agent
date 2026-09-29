@@ -1,4 +1,4 @@
-import { activeComps } from "./sources/ebay.js";
+import { activeComps } from "./ebay.js";
 import { runActor } from "./apify.js";
 import { loadCache, saveCache, trimOutliers, percentile, toNum } from "./util.js";
 

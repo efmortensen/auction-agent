@@ -1,5 +1,5 @@
-import { runActor } from "../apify.js";
-import { toNum, findZip } from "../util.js";
+import { runActor } from "./apify.js";
+import { toNum, findZip } from "./util.js";
 
 // Scraper output field names aren't guaranteed, so try several likely names.
 const pick = (o, keys) => {

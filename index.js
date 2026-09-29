@@ -1,7 +1,7 @@
 import fs from "node:fs";
-import cfg from "../config.js";
-import { fetchEbayAuctions } from "./sources/ebay.js";
-import { fetchGov } from "./sources/gov.js";
+import cfg from "./config.js";
+import { fetchEbayAuctions } from "./ebay.js";
+import { fetchGov } from "./gov.js";
 import { classify } from "./classify.js";
 import { getActive, activeMedian, loadSold, compSummary } from "./comps.js";
 import { maxCostPerPiece, costRates, price, groupTrips } from "./deals.js";
