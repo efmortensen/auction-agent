@@ -1,0 +1,14 @@
+{
+  "name": "auction-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Evening email of auction deals from eBay, GovDeals and Public Surplus with max proxy bids.",
+  "scripts": {
+    "start": "node src/index.js",
+    "preview": "DRY_RUN=1 node src/index.js",
+    "demo": "node demo/demo.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "nodemailer": "^6.9.14" }
+}
