@@ -77,6 +77,23 @@ export async function zipLatLng(zip) {
   return zipCache[zip];
 }
 
+// Fallback when there's no zip: look up the city
+export async function cityLatLng(city, state) {
+  if (!city || !state) return null;
+  const key = `${state}|${city}`.toLowerCase();
+  if (key in zipCache) return zipCache[key];
+  try {
+    const data = await fetchJson(`https://api.zippopotam.us/us/${state.toLowerCase()}/${encodeURIComponent(city.toLowerCase())}`,
+      {}, { retries: 1, label: `city ${city}` });
+    const p = data?.places?.[0];
+    zipCache[key] = p ? { lat: +p.latitude, lng: +p.longitude } : null;
+  } catch {
+    zipCache[key] = null;
+  }
+  saveCache("zips", zipCache);
+  return zipCache[key];
+}
+
 export function milesBetween(a, b) {
   if (!a || !b) return null;
   const R = 3958.8, rad = (d) => (d * Math.PI) / 180;

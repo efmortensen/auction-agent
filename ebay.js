@@ -86,12 +86,12 @@ export async function fetchEbayAuctions(cfg, hoursAhead) {
   return { listings: [...byId.values()].filter((l) => new Date(l.endsAt) > Date.now()), errors };
 }
 
-// Active fixed-price listings for a comp query (free; used to pre-screen and for sell-through)
+// Active fixed-price listings for a comp query (free; used to pre-screen)
 export async function activeComps(query) {
   const data = await browseSearch({ q: query, filter: "buyingOptions:{FIXED_PRICE},deliveryCountry:US", limit: "50" });
-  const prices = (data?.itemSummaries || [])
+  const items = (data?.itemSummaries || [])
     .filter((it) => !/for parts|broken|not working/i.test(it.title || ""))
-    .map((it) => toNum(it.price))
-    .filter((n) => n > 0);
-  return { total: data?.total ?? prices.length, prices };
+    .map((it) => ({ p: toNum(it.price), t: it.title || "" }))
+    .filter((x) => x.p > 0);
+  return { total: data?.total ?? items.length, items };
 }

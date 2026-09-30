@@ -29,6 +29,8 @@ export function price(listing, comp, cfg) {
 
   let maxBid = (allInMax - shipIn) / rates.factor;
   maxBid = maxBid >= 20 ? Math.floor(maxBid) : Math.floor(maxBid * 2) / 2; // whole dollars, or 50¢ steps when small
+  const capped = cfg.maxBidCap != null && maxBid > cfg.maxBidCap;
+  if (capped) maxBid = cfg.maxBidCap; // your spending limit per auction
 
   const allInAtMax = maxBid * rates.factor + shipIn;
   const shipOut = (cfg.shipOutEstimate[listing.category] ?? cfg.shipOutEstimate.other) * pieces;
@@ -38,7 +40,7 @@ export function price(listing, comp, cfg) {
   const mustBeat = listing.minNextBid ?? (listing.bidCount ? listing.currentBid + 0.5 : listing.currentBid);
   const biddable = maxBid >= 1 && maxBid >= mustBeat && listing.shippingIn !== null;
 
-  return { unitResale, resaleTotal, multiple, maxBid, allInAtMax, profitAtMax, rates, biddable };
+  return { unitResale, resaleTotal, multiple, maxBid, capped, allInAtMax, profitAtMax, rates, biddable };
 }
 
 // Pickup items grouped by where you'd drive; a group has to clear the trip minimum.

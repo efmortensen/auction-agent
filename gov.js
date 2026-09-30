@@ -22,13 +22,44 @@ function premiumFrom(obj) {
   return m ? parseFloat(m[1]) : null;
 }
 
-function normGovDeals(it, search) {
-  const locText = [
-    pick(it, ["location", "locationText", "address", "pickupAddress"]),
-    pick(it, ["city", "location.city"]),
-    pick(it, ["state", "location.state"]),
-    pick(it, ["zip", "zipCode", "postalCode", "location.zip", "location.postalCode"]),
-  ].filter((x) => typeof x === "string" || typeof x === "number").join(", ");
+// Walk every field of a record, collecting text (so we find the address wherever it's kept)
+function allStrings(o, path = "", out = []) {
+  if (o == null) return out;
+  if (typeof o === "string" || typeof o === "number") out.push({ key: path.toLowerCase(), val: String(o) });
+  else if (Array.isArray(o)) o.forEach((v, i) => allStrings(v, `${path}.${i}`, out));
+  else if (typeof o === "object") for (const [k, v] of Object.entries(o)) allStrings(v, path ? `${path}.${k}` : k, out);
+  return out;
+}
+
+// Find where the item is: a zip code, or at least "City, TX"
+export function findLocation(it, state) {
+  const strs = allStrings(it);
+  const locish = strs.filter((s) => /(loc|address|city|zip|postal|pickup|seller|state)/.test(s.key));
+  // 1. A zip in a location-type field
+  for (const s of locish) {
+    const z = /(zip|postal)/.test(s.key) && /^\d{5}(-\d{4})?$/.test(s.val.trim()) ? s.val.trim().slice(0, 5) : findZip(s.val);
+    if (z) return { zip: z, text: s.val };
+  }
+  // 2. "TX 77002" anywhere (a bare 5-digit number could be an asset number, so require the state)
+  const st = `(?:${state}|Texas)`;
+  for (const s of strs) {
+    const m = s.val.match(new RegExp(`\\b${st},?\\s+(\\d{5})\\b`, "i"));
+    if (m) return { zip: m[1], text: s.val };
+  }
+  // 3. "Pasadena, TX" -> look up by city
+  for (const s of [...locish, ...strs]) {
+    const m = s.val.match(new RegExp(`([A-Za-z][A-Za-z .'-]{1,40}),\\s*${st}\\b`, "i"));
+    if (m) return { city: m[1].trim().split(/\s{2,}|\n/).pop(), text: s.val };
+  }
+  // 4. Separate city + state fields
+  const city = strs.find((s) => /(^|\.)city$/.test(s.key));
+  if (city) return { city: city.val, text: city.val };
+  return { text: "" };
+}
+
+function normGovDeals(it, search, state) {
+  const loc = findLocation(it, state);
+  const locText = loc.text.slice(0, 120);
   const id = pick(it, ["assetId", "id", "itemId", "auctionId", "accountId"]) ?? pick(it, ["url"]);
   return {
     id: `govdeals:${id}`,
@@ -45,7 +76,8 @@ function normGovDeals(it, search) {
     category: search.category,
     searchTerm: search.term,
     pickup: true,
-    pickupZip: findZip(locText) || findZip(pick(it, ["description"])),
+    pickupZip: loc.zip || null,
+    pickupCity: loc.city || null,
     pickupText: locText,
     seller: String(pick(it, ["seller", "sellerName", "agency", "seller.name"]) || ""),
     shippingIn: 0,
@@ -71,6 +103,7 @@ function normPublicSurplus(it, search) {
     searchTerm: search.term,
     pickup: true,
     pickupZip: findZip(it.pickupAddress),
+    pickupCity: (String(it.pickupAddress || "").match(/([A-Za-z][A-Za-z .'-]+),\s*[A-Z]{2}\b/) || [])[1]?.trim() || null,
     pickupText: it.pickupAddress || it.state || "",
     seller: it.agency || "",
     shippingIn: 0,
@@ -89,7 +122,7 @@ export async function fetchGov(cfg, hoursAhead) {
         mode: "byState", state: cfg.homeState, searchText: s.term,
         auctionStatus: "open", sortBy: "endingSoonest", maxItems: cfg.govResultsPerSearch,
       }, "govdeals");
-      for (const it of items) out.push(normGovDeals(it, s));
+      for (const it of items) out.push(normGovDeals(it, s, cfg.homeState));
     } catch (e) { errors.push(`GovDeals "${s.term}": ${e.message}`); }
 
     try {

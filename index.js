@@ -7,7 +7,7 @@ import { getActive, activeMedian, loadSold, compSummary } from "./comps.js";
 import { maxCostPerPiece, costRates, price, groupTrips } from "./deals.js";
 import { buildEmail, sendEmail } from "./email.js";
 import { apifyUsage } from "./apify.js";
-import { zipLatLng, milesBetween, money } from "./util.js";
+import { zipLatLng, cityLatLng, milesBetween, money } from "./util.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,6 +37,7 @@ export async function runAgent(deps = {}) {
   const fetchEbay = deps.fetchEbay || fetchEbayAuctions;
   const fetchGovFn = deps.fetchGov || fetchGov;
   const geocode = deps.geocode || zipLatLng;
+  const geocodeCity = deps.geocodeCity || cityLatLng;
   const notes = [], errors = [];
 
   const today = todayInTz(cfg.timezone);
@@ -54,11 +55,12 @@ export async function runAgent(deps = {}) {
     const unknownEnd = gov.listings.filter((l) => !l.endsAt).length;
     if (unknownEnd) notes.push(`${unknownEnd} government listings had no end time, so the scraper output may have changed.`);
   }
+  const totalFetched = listings.length;
   console.log(`Fetched ${listings.length} listings (gov sites ${runGov ? "included" : "skipped today"}).`);
 
   // 2. Read each listing and check pickup distance
   const home = await geocode(cfg.homeZip);
-  listings = listings.map(classify).map((l) => {
+  listings = listings.map((l) => classify(l, cfg)).map((l) => {
     if (l.shippingIn !== null) return l;
     // eBay "calculated" shipping: estimate it so the item isn't thrown out
     const est = (cfg.shipOutEstimate[l.category] ?? cfg.shipOutEstimate.other) * l.pieces;
@@ -66,7 +68,10 @@ export async function runAgent(deps = {}) {
   });
   listings = await pool(listings, 4, async (l) => {
     if (!l.pickup) return l;
-    const miles = l.pickupZip && home ? milesBetween(home, await geocode(l.pickupZip)) : null;
+    let where = null;
+    if (l.pickupZip) where = await geocode(l.pickupZip);
+    if (!where && l.pickupCity) where = await geocodeCity(l.pickupCity, cfg.homeState);
+    const miles = where && home ? milesBetween(home, where) : null;
     return { ...l, miles };
   });
   listings = listings.filter((l) => {
@@ -76,6 +81,13 @@ export async function runAgent(deps = {}) {
     l.lookReason ??= "Couldn't find the pickup location, check distance";
     return true;
   });
+
+  // Your size rule: skip anything bigger than about 2 ft x 2 ft
+  const bigCount = listings.filter((l) => l.tooBig).length;
+  listings = listings.filter((l) => !l.tooBig);
+  // Your spending limit: skip anything already past it
+  const overCap = listings.filter((l) => (l.minNextBid ?? l.currentBid) > cfg.maxBidCap).length;
+  listings = listings.filter((l) => (l.minNextBid ?? l.currentBid) <= cfg.maxBidCap);
 
   const looks = listings.filter((l) => l.lookReason);
   let candidates = listings.filter((l) => !l.lookReason);
@@ -89,7 +101,7 @@ export async function runAgent(deps = {}) {
   const mustBeat = (l) => l.minNextBid ?? (l.bidCount ? l.currentBid + 0.5 : l.currentBid);
   candidates = candidates
     .map((l) => {
-      const am = activeMedian(active[l.compQuery]);
+      const am = activeMedian(active[l.compQuery], l.compQuery);
       if (am == null) return { ...l, headroom: 0 }; // unknown: still worth a sold-comp check
       const { cost } = maxCostPerPiece(am * l.valueFactor, cfg.multipleTiers);
       const optimisticBid = (cost * l.pieces - (l.shippingIn ?? 0)) / costRates(l, cfg).factor;
@@ -131,10 +143,11 @@ export async function runAgent(deps = {}) {
     .slice(0, cfg.maxWorthALook);
 
   // 6. Footer notes
+  if (bigCount || overCap) notes.push(`Skipped ${bigCount} too-big item(s) and ${overCap} already over your ${money(cfg.maxBidCap)} limit.`);
   const noCert = Object.entries(cfg.resaleCertificateOnFile).filter(([, v]) => !v).map(([k]) => k);
   if (noCert.length) notes.push(`Max bids include ${cfg.salesTaxPercent}% sales tax for: ${noCert.join(", ")}. Flip them to true in config.js once your resale certificate is on file.`);
   const cost = Object.entries(apifyUsage).reduce((s, [k, n]) => s + (n / 1000) * (cfg.apifyPricePer1000[k] || 0), 0);
-  notes.push(`Checked ${listings.length} auctions${runGov ? " across eBay, GovDeals and Public Surplus" : " on eBay (government sites run " + cfg.govScanDays.join(" and ") + ")"}. Estimated Apify cost this run: ${money(cost)}.`);
+  notes.push(`Checked ${totalFetched} auctions${runGov ? " across eBay, GovDeals and Public Surplus" : " on eBay (government sites run " + cfg.govScanDays.join(" and ") + ")"}. Estimated Apify cost this run: ${money(cost)}.`);
   if (errors.length) notes.push(`Problems this run (${errors.length}): ${errors.slice(0, 5).join(" | ")}`);
 
   const dateLabel = new Date().toLocaleDateString("en-US", { timeZone: cfg.timezone, weekday: "long", month: "long", day: "numeric" });

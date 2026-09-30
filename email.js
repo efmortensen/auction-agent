@@ -17,10 +17,9 @@ function img(url) {
 
 function compLine(d) {
   const c = d.comp;
-  const sold = c.soldCountCapped ? `${c.soldCount}+ sold` : `${c.soldCount} sold`;
-  const str = c.sellThrough !== null && c.sellThrough !== undefined ? `, ${Math.round(c.sellThrough * 100)}% sell-through` : "";
+  const sold = c.soldCountCapped ? `${c.soldCount}+ matching sales` : `${c.soldCount} matching sale${c.soldCount === 1 ? "" : "s"}`;
   const each = d.pieces > 1 ? ` each, ${d.pieces} pieces` : "";
-  return `Sells for about <b>${money(d.calc.unitResale)}</b>${each} (${sold} in 30 days${str}, ${c.confidence} confidence)`;
+  return `Sells for about <b>${money(d.calc.unitResale)}</b>${each} (${sold} in the last 30 days)`;
 }
 
 function dealRow(d, cfg) {
@@ -43,7 +42,7 @@ function dealRow(d, cfg) {
       </td>
       <td width="112" valign="top" align="right">
         <div style="display:inline-block;background:${TAG};border:1px dashed ${TAG_EDGE};border-radius:8px;padding:8px 12px;text-align:center;">
-          <div style="${FONT}font-size:11px;color:${MUTED};">Max bid</div>
+          <div style="${FONT}font-size:11px;color:${MUTED};">${d.calc.capped ? "Max bid (your cap)" : "Max bid"}</div>
           <div style="${SERIF}font-size:26px;font-weight:700;color:${INK};line-height:1.1;">${money(d.calc.maxBid)}</div>
         </div>
       </td>

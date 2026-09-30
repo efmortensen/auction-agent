@@ -8,7 +8,7 @@ export default {
   // ---------------------------------------------------------------
   //  WHERE YOU ARE
   // ---------------------------------------------------------------
-  homeZip: "77520",          // <-- CHANGE to your zip code
+  homeZip: "77002",          // <-- CHANGE to your zip code
   homeState: "TX",           // two-letter state for GovDeals / Public Surplus
   maxPickupMiles: 50,        // straight-line miles; ~50 mi is about a 1-hour drive
 
@@ -23,6 +23,29 @@ export default {
     { upToCost: Infinity, multiple: 4 },  // over $50   -> 4x (never lower)
   ],
   minProfitPerPickupTrip: 100, // each pickup location must clear this much profit
+  maxBidCap: 200,              // never suggest a bid over this, skip anything already past it
+
+  // ---------------------------------------------------------------
+  //  TOO BIG TO HANDLE (anything bigger than about 2 ft x 2 ft)
+  //  Listings with any of these words are skipped completely.
+  //  Add or remove words any time.
+  // ---------------------------------------------------------------
+  tooBigWords: [
+    "plywood", "lumber", "wood", "timber", "flooring", "laminate", "floor tile", "ceramic tile",
+    "carpet", "drywall", "sheetrock", "particle board", "particleboard", "mdf", "osb",
+    "compressor", "nailer", "nailers", "nail gun", "generator", "pressure washer", "mower",
+    "tractor", "trailer", "vehicle", "truck", "van", "suv", "bus", "boat", "forklift",
+    "golf cart", "atv", "pallet", "pallets", "skid", "furniture", "desk", "desks", "chair",
+    "chairs", "table", "tables", "cabinet", "cabinets", "bookcase", "bookshelf", "shelving",
+    "locker", "lockers", "sofa", "couch", "mattress", "dresser", "refrigerator", "fridge",
+    "freezer", "washing machine", "clothes dryer", "dishwasher", "treadmill", "elliptical",
+    "exercise bike", "vending machine", "copier", "copy machine", "gun safe", "whiteboard",
+    "cubicle", "partition", "ladder", "scaffold", "kayak", "canoe", "piano", "hvac",
+    "water heater", "tires", "fencing", "scrap metal",
+  ],
+  // Words that mean it's a small version (toy truck, dollhouse furniture), so it's NOT too big
+  smallVersionWords: ["toy", "toys", "dollhouse", "miniature", "mini", "lamp", "organizer",
+    "model", "figure", "lego", "hot wheels", "diecast", "die-cast", "matchbox", "happy meal"],
 
   // Your selling costs, used for the "profit" number
   sellingFeePercent: 13.6,     // eBay final value fee (approx.)
@@ -85,8 +108,7 @@ export default {
     { term: "sterling silver jewelry lot", category: "jewelry" },
   ],
   ebayLocalSearches: [
-    // Local pickup only, within your radius (big/heavy stuff shines here)
-    { term: "lot", category: "lots" },
+    // Local pickup only, within your radius
     { term: "laptop", category: "electronics" },
     { term: "small appliance", category: "appliances" },
     { term: "toys", category: "toys_media" },
@@ -99,8 +121,8 @@ export default {
     { term: "jewelry", category: "jewelry" },
     { term: "watch", category: "jewelry" },
     { term: "toys", category: "toys_media" },
-    { term: "appliance", category: "appliances" },
-    { term: "lot", category: "lots" },
+    { term: "small appliance", category: "appliances" },
+    { term: "video games", category: "toys_media" },
   ],
 
   // ---------------------------------------------------------------
@@ -108,7 +130,7 @@ export default {
   // ---------------------------------------------------------------
   govResultsPerSearch: 20,        // per term, per site, ending soonest first
   soldCompResultsPerSearch: 20,   // sold comps pulled per item type
-  maxNewSoldCompSearchesPerRun: 30,
+  maxNewSoldCompSearchesPerRun: 20,
   compCacheDays: 7,               // reuse comps for a week before re-checking
   maxWorthALook: 15,              // cap on the "worth a look" section
   // Used only for the cost estimate at the bottom of the email
